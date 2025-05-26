@@ -24,8 +24,8 @@ jobs:
         run: go mod tidy
 
       # Optional: If you add tests later
-      # - name: Run tests and generate coverage
-      #   run: go test -coverprofile=coverage.out ./...
+      - name: Run tests and generate coverage
+        run: go test -coverprofile=coverage.out ./...
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
