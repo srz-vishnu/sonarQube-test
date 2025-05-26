@@ -31,7 +31,7 @@ jobs:
         uses: SonarSource/sonarcloud-github-action@v2
         with:
           args: >
-            -Dsonar.projectKey=srz-vishnu_e-cart
+            -Dsonar.projectKey=srz-vishnu_sonarQube-test
             -Dsonar.organization=srz-innovations
             -Dsonar.host.url=https://sonarcloud.io
         env:
