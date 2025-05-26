@@ -6,4 +6,5 @@ sonar.login=${SONAR_TOKEN}
 
 sonar.sources=.
 sonar.language=go
+sonar.exclusions=**/dto/**,**/pkg/**,**/mocks/**,**/helper/**,**/gormdb/**
 sonar.go.coverage.reportPaths=coverage.out
