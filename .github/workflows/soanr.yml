@@ -26,6 +26,11 @@ jobs:
       - name: Run tests and generate coverage
         run: go test -coverprofile=coverage.out ./...
 
+      - name: Debug coverage.out
+        run: |
+          echo "Contents of coverage.out:"
+          cat coverage.out || echo "No coverage.out file found"
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
         with:
@@ -41,30 +46,28 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
+      - name: Wait for SonarCloud to finish processing
+        run: sleep 20
+
       - name: Generate SonarCloud Summary Report
         run: |
           echo "SonarCloud Analysis Summary" > sonar_summary.md
           echo "============================" >> sonar_summary.md
           echo "" >> sonar_summary.md
 
-          echo "🔍 Fetching raw API response from SonarCloud..."
           response=$(curl -s -u $SONAR_TOKEN: "https://sonarcloud.io/api/measures/component?component=srz-vishnu_sonarQube-test&metricKeys=coverage,bugs,vulnerabilities,code_smells")
-
-          echo "📊 Raw SonarCloud API response:"
-          echo "$response"
 
           echo "" >> sonar_summary.md
           echo "📊 Raw SonarCloud API response:" >> sonar_summary.md
           echo '```json' >> sonar_summary.md
           echo "$response" >> sonar_summary.md
           echo '```' >> sonar_summary.md
+          echo "" >> sonar_summary.md
 
           get_value() {
-            val=$(echo "$response" | jq -r --arg metric "$1" '.component.measures[]? | select(.metric == $metric) | .value')
-            if [[ -z "$val" || "$val" == "null" ]]; then echo "N/A"; else echo "$val"; fi
+            echo "$response" | jq -r --arg metric "$1" '.component.measures[]? | select(.metric == $metric) | .value // "N/A"'
           }
 
-          echo "" >> sonar_summary.md
           echo "- **Test Coverage**: $(get_value coverage)%" >> sonar_summary.md
           echo "- **Bugs**: $(get_value bugs)" >> sonar_summary.md
           echo "- **Vulnerabilities**: $(get_value vulnerabilities)" >> sonar_summary.md
