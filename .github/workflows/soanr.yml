@@ -34,7 +34,7 @@ jobs:
             -Dsonar.organization=srz-innovations
             -Dsonar.host.url=https://sonarcloud.io
             -Dsonar.sources=.
-            -Dsonar.exclusions=app/dto/**,app/helper/**,app/gormdb/**,app/service/mocks/**,pkg/**,cmd/api.go,main.go,app/router.go,app/controller/*_test.go,app/internal/internal_test.go,app/internal/mocks/**
+            -Dsonar.exclusions=app/dto/**,app/helper/**,app/gormdb/**,app/service/mocks/**,pkg/**,cmd/api.go,main.go,app/router.go,app/controller/*_test.go,app/internal/internal_test.go,app/service/userService_test.go,app/internal/mocks/UserRepo.go
             -Dsonar.go.coverage.reportPaths=coverage.out
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
