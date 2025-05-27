@@ -33,18 +33,10 @@ jobs:
             -Dsonar.projectKey=srz-vishnu_sonarQube-test
             -Dsonar.organization=srz-innovations
             -Dsonar.host.url=https://sonarcloud.io
-
-            # Only include real source files
             -Dsonar.sources=app
-
-            # Tell Sonar where the test files are (so it doesn't treat them as source)
             -Dsonar.tests=.
             -Dsonar.test.inclusions=**/*_test.go
-
-            # Exclude mocks, test files, etc. from coverage and analysis
             -Dsonar.exclusions=**/*_test.go,**/mocks/**,app/dto/**,app/helper/**,app/gormdb/**,pkg/**,cmd/api.go,main.go,app/router.go
-
-            # Specify the Go coverage report file
             -Dsonar.go.coverage.reportPaths=coverage.out
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
