@@ -117,7 +117,7 @@ func TestLoginUser(t *testing.T) {
 		{
 			name:  "fail_decode_request",
 			rbody: []byte(`{"invalid": "json"`),
-			mock:  func(_ *internalmocks.UserRepo, jwtMock *jwtmocks.JWTService) {},
+			mock:  func(_ *internalmocks.UserRepo, _ *jwtmocks.JWTService) {},
 			want:  nil,
 			wantErr: e.NewError(
 				e.ErrDecodeRequestBody,
@@ -127,8 +127,8 @@ func TestLoginUser(t *testing.T) {
 		},
 		{
 			name:  "fail_validate_request",
-			rbody: []byte(`{"username": "testuser"}`), // missing password
-			mock:  func(_ *internalmocks.UserRepo, jwtMock *jwtmocks.JWTService) {},
+			rbody: []byte(`{"username": "testuser"}`),
+			mock:  func(_ *internalmocks.UserRepo, _ *jwtmocks.JWTService) {},
 			want:  nil,
 			wantErr: e.NewError(
 				e.ErrValidateRequest,
@@ -139,7 +139,7 @@ func TestLoginUser(t *testing.T) {
 		{
 			name:  "fail_user_not_found_db",
 			rbody: []byte(`{"username": "testuser", "password": "pass"}`),
-			mock: func(userRepoMock *internalmocks.UserRepo, jwtMock *jwtmocks.JWTService) {
+			mock: func(userRepoMock *internalmocks.UserRepo, _ *jwtmocks.JWTService) {
 				userRepoMock.On("GetUserByUsername", "testuser").Return(nil, gorm.ErrRecordNotFound).Once()
 			},
 			want: nil,
@@ -152,7 +152,7 @@ func TestLoginUser(t *testing.T) {
 		{
 			name:  "fail_user_nil",
 			rbody: []byte(`{"username": "testuser", "password": "pass"}`),
-			mock: func(userRepoMock *internalmocks.UserRepo, jwtMock *jwtmocks.JWTService) {
+			mock: func(userRepoMock *internalmocks.UserRepo, _ *jwtmocks.JWTService) {
 				userRepoMock.On("GetUserByUsername", "testuser").Return(nil, nil).Once()
 			},
 			want: nil,
@@ -165,7 +165,7 @@ func TestLoginUser(t *testing.T) {
 		{
 			name:  "fail_db_error",
 			rbody: []byte(`{"username": "testuser", "password": "pass"}`),
-			mock: func(userRepoMock *internalmocks.UserRepo, jwtMock *jwtmocks.JWTService) {
+			mock: func(userRepoMock *internalmocks.UserRepo, _ *jwtmocks.JWTService) {
 				userRepoMock.On("GetUserByUsername", "testuser").Return(nil, errors.New("some db error")).Once()
 			},
 			want: nil,
@@ -178,11 +178,11 @@ func TestLoginUser(t *testing.T) {
 		{
 			name:  "fail_wrong_password",
 			rbody: []byte(`{"username": "testuser", "password": "wrong"}`),
-			mock: func(userRepoMock *internalmocks.UserRepo, jwtMock *jwtmocks.JWTService) {
+			mock: func(userRepoMock *internalmocks.UserRepo, _ *jwtmocks.JWTService) {
 				userRepoMock.On("GetUserByUsername", "testuser").Return(&internal.Userdetail{
 					ID:       1,
 					Username: "testuser",
-					Password: "correct", // stored password
+					Password: "correct",
 					Status:   true,
 				}, nil).Once()
 			},
@@ -196,7 +196,7 @@ func TestLoginUser(t *testing.T) {
 		{
 			name:  "fail_user_blocked",
 			rbody: []byte(`{"username": "testuser", "password": "password"}`),
-			mock: func(userRepoMock *internalmocks.UserRepo, jwtMock *jwtmocks.JWTService) {
+			mock: func(userRepoMock *internalmocks.UserRepo, _ *jwtmocks.JWTService) {
 				userRepoMock.On("GetUserByUsername", "testuser").Return(&internal.Userdetail{
 					ID:       1,
 					Username: "testuser",
@@ -222,12 +222,15 @@ func TestLoginUser(t *testing.T) {
 					Status:   true,
 					IsAdmin:  false,
 				}, nil).Once()
-
 				jwtMock.On("GenerateToken", int64(1), "testuser", false).
 					Return("", errors.New("token error")).Once()
 			},
-			want:    nil,
-			wantErr: e.NewError(e.ErrGenerateToken, "failed to generate token", errors.New("token error")),
+			want: nil,
+			wantErr: e.NewError(
+				e.ErrGenerateToken,
+				"failed to generate token",
+				errors.New("token error"),
+			),
 		},
 		{
 			name:  "success_login",
@@ -245,6 +248,25 @@ func TestLoginUser(t *testing.T) {
 			},
 			want: &dto.LoginResponse{
 				Token: "mocked-token",
+			},
+			wantErr: nil,
+		},
+		{
+			name:  "success_login_admin",
+			rbody: []byte(`{"username": "adminuser", "password": "adminpass"}`),
+			mock: func(userRepoMock *internalmocks.UserRepo, jwtMock *jwtmocks.JWTService) {
+				userRepoMock.On("GetUserByUsername", "adminuser").Return(&internal.Userdetail{
+					ID:       2,
+					Username: "adminuser",
+					Password: "adminpass",
+					Status:   true,
+					IsAdmin:  true,
+				}, nil).Once()
+				jwtMock.On("GenerateToken", int64(2), "adminuser", true).
+					Return("admin-token", nil).Once()
+			},
+			want: &dto.LoginResponse{
+				Token: "admin-token",
 			},
 			wantErr: nil,
 		},
@@ -271,12 +293,11 @@ func TestLoginUser(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, got)
-				assert.Equal(t, "mocked-token", got.Token)
-				assert.Equal(t, "mocked-token", got.Token)
-
+				assert.Equal(t, tt.want.Token, got.Token)
 			}
 
 			userRepoMock.AssertExpectations(t)
+			jwtMock.AssertExpectations(t)
 		})
 	}
 }
