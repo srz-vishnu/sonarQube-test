@@ -1,0 +1,40 @@
+name: SonarCloud Scan
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  sonarcloud:
+    name: SonarCloud Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.4'
+
+      - name: Install dependencies
+        run: go mod tidy
+
+      - name: Run tests and generate coverage
+        run: go test -coverprofile=coverage.out ./...
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v2
+        with:
+          args: >
+            -Dsonar.projectKey=srz-vishnu_sonarQube-test
+            -Dsonar.organization=srz-innovations
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.sources=.
+            -Dsonar.exclusions=app/dto/**,app/helper/**,app/gormdb/**,app/service/mocks/**,pkg/**,cmd/api.go,main.go,app/router.go,app/controller/*_test.go,app/internal/internal_test.go,app/service/userService_test.go,app/internal/mocks/UserRepo.go
+            -Dsonar.go.coverage.reportPaths=coverage.out
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
