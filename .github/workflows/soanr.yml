@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: go mod tidy
 
-      - name: Run tests and generate coverage
+      - name: Run tests and generates coverage
         run: go test -coverprofile=coverage.out ./...
 
       - name: SonarCloud Scan
