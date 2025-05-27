@@ -12,16 +12,15 @@ jobs:
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
-          server_port: 587        # Use 587 for TLS
-          secure: false           # TLS (STARTTLS), must be false with port 587
-          username: ${{ secrets.EMAIL_USERNAME }}
-          password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: New PR opened in ${{ github.repository }}
+          server_port: 465
+          username: ${{secrets.EMAIL_USERNAME}}
+          password: ${{secrets.EMAIL_PASSWORD}}
+          subject: New PR opened in ${{github.repository}}
           body: |
-            A new pull request has been opened by ${{ github.actor }} at ${{ github.event.pull_request.created_at }}.
+            A new pull request has been opened by ${{github.actor}} at ${{ github.event.pull_request.created_at }}.
             
-            PR Title: ${{ github.event.pull_request.title }}
-            PR Description: ${{ github.event.pull_request.body }}
+            PR Title: ${{github.event.pull_request.title}}
+            PR Description: ${{github.event.pull_request.body}}
 
             Source Branch: ${{ github.event.pull_request.head.ref }}
             Target Branch: ${{ github.event.pull_request.base.ref }}
@@ -31,7 +30,8 @@ jobs:
             - Additions: +${{ github.event.pull_request.additions }}
             - Deletions: -${{ github.event.pull_request.deletions }}
             - Commits: ${{ github.event.pull_request.commits }}
-
-            View PR: ${{ github.event.pull_request.html_url }}
-          to: ${{ secrets.EMAIL_RECIPIENTS }}
-          from: ${{ secrets.EMAIL_USERNAME }}
+            
+            You can view the PR here: ${{github.event.pull_request.html_url}}
+          to: ${{secrets.EMAIL_RECIPIENTS}}
+          from: ${{secrets.EMAIL_USERNAME}}
+          secure: true

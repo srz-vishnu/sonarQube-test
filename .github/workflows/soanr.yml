@@ -34,7 +34,37 @@ jobs:
             -Dsonar.organization=srz-innovations
             -Dsonar.host.url=https://sonarcloud.io
             -Dsonar.sources=.
-            -Dsonar.exclusions=app/dto/**,app/helper/**,app/gormdb/**,app/service/mocks/**,pkg/**,cmd/api.go,main.go,app/router.go,app/controller/*_test.go,app/internal/internal_test.go,app/service/userService_test.go,app/internal/mocks/UserRepo.go
+            -Dsonar.exclusions=app/dto/**,app/helper/**,app/gormdb/**,app/service/mocks/**,pkg/**,cmd/api.go,main.go,app/router.go,app/controller/*_test.go,app/internal/internal_test.go,app/service/service_test.go,app/internal/mocks/UserRepo.go
             -Dsonar.go.coverage.reportPaths=coverage.out
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Generate SonarCloud Summary Report
+        run: |
+          echo "SonarCloud Analysis Summary" > sonar_summary.md
+          echo "============================" >> sonar_summary.md
+          echo "" >> sonar_summary.md
+
+          response=$(curl -s -u $SONAR_TOKEN: "https://sonarcloud.io/api/measures/component?component=srz-vishnu_sonarQube-test&metricKeys=coverage,bugs,vulnerabilities,code_smells")
+
+          get_value() {
+            echo "$response" | jq -r --arg metric "$1" '.component.measures[] | select(.metric == $metric) | .value'
+          }
+
+          echo "- **Test Coverage**: $(get_value coverage)%" >> sonar_summary.md
+          echo "- **Bugs**: $(get_value bugs)" >> sonar_summary.md
+          echo "- **Vulnerabilities**: $(get_value vulnerabilities)" >> sonar_summary.md
+          echo "- **Code Smells**: $(get_value code_smells)" >> sonar_summary.md
+
+          cat sonar_summary.md
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Add report to GitHub Actions summary
+        run: cat sonar_summary.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Report Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: sonar-summary
+          path: sonar_summary.md
