@@ -139,7 +139,7 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      - name: Add report to GitHub Actions summary
+      - name: Add report to GitHub Action summary
         run: cat sonar_summary.md >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Report Artifact
