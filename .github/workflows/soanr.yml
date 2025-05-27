@@ -64,7 +64,7 @@ jobs:
         run: cat sonar_summary.md >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Report Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: sonar-summary
           path: sonar_summary.md
