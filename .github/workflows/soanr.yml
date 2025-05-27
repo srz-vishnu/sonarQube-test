@@ -47,7 +47,7 @@ jobs:
           echo "============================" >> sonar_summary.md
           echo "" >> sonar_summary.md
 
-          retries=30
+          retries=60
           sleep_interval=10
           for i in $(seq 1 $retries); do
             echo "Polling attempt $i..."
