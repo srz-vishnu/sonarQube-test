@@ -33,8 +33,10 @@ jobs:
             -Dsonar.projectKey=srz-vishnu_sonarQube-test
             -Dsonar.organization=srz-innovations
             -Dsonar.host.url=https://sonarcloud.io
-            -Dsonar.sources=.
-            -Dsonar.exclusions=app/dto/**,app/helper/**,app/gormdb/**,app/service/mocks/**,pkg/**,cmd/api.go,main.go,app/router.go,app/controller/*_test.go,app/internal/internal_test.go,app/service/service_test.go,app/internal/mocks/UserRepo.go
+            -Dsonar.sources=app
+            -Dsonar.tests=.
+            -Dsonar.test.inclusions=**/*_test.go
+            -Dsonar.exclusions=app/dto/**,app/helper/**,app/gormdb/**,app/service/mocks/**,pkg/**,cmd/api.go,main.go,app/router.go
             -Dsonar.go.coverage.reportPaths=coverage.out
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
