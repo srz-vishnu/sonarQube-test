@@ -14,6 +14,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Required for SonarCloud to properly analyze the code
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -24,7 +26,11 @@ jobs:
         run: go mod tidy
 
       - name: Run tests and generate coverage
-        run: go test -covermode=atomic -coverprofile=coverage.out ./...
+        run: |
+          go test -covermode=atomic -coverprofile=coverage.out ./...
+          # Convert coverage to SonarQube format if needed
+          go install github.com/sonatype-nexus-community/nancy@latest
+          go tool cover -func=coverage.out
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
@@ -38,31 +44,71 @@ jobs:
             -Dsonar.test.inclusions=**/*_test.go
             -Dsonar.exclusions=**/*_test.go,**/mocks/**,app/dto/**,app/helper/**,app/gormdb/**,pkg/**,cmd/api.go,main.go,app/router.go
             -Dsonar.go.coverage.reportPaths=coverage.out
+            -Dsonar.go.tests.reportPaths=coverage.out
+            -Dsonar.scm.provider=git
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed for PR decoration
 
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
       - name: Wait for SonarCloud processing
-        run: sleep 15
+        run: |
+          echo "Waiting for SonarCloud analysis to complete..."
+          for i in {1..12}; do
+            status=$(curl -s -u $SONAR_TOKEN: "https://sonarcloud.io/api/qualitygates/project_status?projectKey=srz-vishnu_sonarQube-test" | jq -r .projectStatus.status)
+            if [ "$status" = "OK" ] || [ "$status" = "ERROR" ]; then
+              echo "Analysis completed with status: $status"
+              break
+            fi
+            echo "Waiting... (attempt $i/12)"
+            sleep 10
+          done
+          if [ "$status" = "NONE" ]; then
+            echo "Analysis still not complete after 2 minutes"
+            exit 1
+          fi
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       - name: Generate SonarCloud Summary Report
         run: |
+          echo "Generating SonarCloud report..."
           echo "SonarCloud Analysis Summary" > sonar_summary.md
           echo "============================" >> sonar_summary.md
           echo "" >> sonar_summary.md
 
-          response=$(curl -s -u $SONAR_TOKEN: "https://sonarcloud.io/api/measures/component?component=srz-vishnu_sonarQube-test&metricKeys=coverage,bugs,vulnerabilities,code_smells")
+          # Get all metrics in one request
+          response=$(curl -s -u $SONAR_TOKEN: "https://sonarcloud.io/api/measures/component?component=srz-vishnu_sonarQube-test&metricKeys=alert_status,coverage,bugs,vulnerabilities,code_smells,duplicated_lines_density,security_rating,reliability_rating")
 
-          get_value() {
-            echo "$response" | jq -r --arg metric "$1" '.component.measures[] | select(.metric == $metric) | .value'
+          # Debug: Check raw response
+          echo "API Response:"
+          echo "$response" | jq .
+
+          # Function to safely extract values
+          get_metric() {
+            local metric=$1
+            local value=$(echo "$response" | jq -r --arg m "$metric" '.component.measures[] | select(.metric == $m) | .value')
+            if [ -z "$value" ] || [ "$value" = "null" ]; then
+              echo "N/A"
+            else
+              echo "$value"
+            fi
           }
 
-          echo "- **Test Coverage**: $(get_value coverage)%" >> sonar_summary.md
-          echo "- **Bugs**: $(get_value bugs)" >> sonar_summary.md
-          echo "- **Vulnerabilities**: $(get_value vulnerabilities)" >> sonar_summary.md
-          echo "- **Code Smells**: $(get_value code_smells)" >> sonar_summary.md
+          # Add metrics to report
+          echo "- **Quality Gate Status**: $(get_metric alert_status)" >> sonar_summary.md
+          echo "- **Test Coverage**: $(get_metric coverage)%" >> sonar_summary.md
+          echo "- **Bugs**: $(get_metric bugs)" >> sonar_summary.md
+          echo "- **Vulnerabilities**: $(get_metric vulnerabilities)" >> sonar_summary.md
+          echo "- **Code Smells**: $(get_metric code_smells)" >> sonar_summary.md
+          echo "- **Duplicated Code**: $(get_metric duplicated_lines_density)%" >> sonar_summary.md
+          echo "- **Security Rating**: $(get_metric security_rating)/5 (1=best)" >> sonar_summary.md
+          echo "- **Reliability Rating**: $(get_metric reliability_rating)/5 (1=best)" >> sonar_summary.md
+
+          echo "" >> sonar_summary.md
+          echo "[View Full Report on SonarCloud](https://sonarcloud.io/project/overview?id=srz-vishnu_sonarQube-test)" >> sonar_summary.md
 
           cat sonar_summary.md
         env:
@@ -74,5 +120,7 @@ jobs:
       - name: Upload Report Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: sonar-summary
-          path: sonar_summary.md
+          name: sonar-summary-report
+          path: |
+            sonar_summary.md
+            coverage.out
