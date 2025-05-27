@@ -24,7 +24,7 @@ jobs:
         run: go mod tidy
 
       - name: Run tests and generate coverage
-        run: go test -coverprofile=coverage.out ./...
+        run: go test -covermode=atomic -coverprofile=coverage.out ./...
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
