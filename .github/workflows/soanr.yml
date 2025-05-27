@@ -26,11 +26,6 @@ jobs:
       - name: Run tests and generate coverage
         run: go test -coverprofile=coverage.out ./...
 
-      - name: Debug coverage.out
-        run: |
-          echo "Contents of coverage.out:"
-          cat coverage.out || echo "No coverage.out file found"
-
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
         with:
@@ -46,16 +41,31 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      - name: Wait for SonarCloud to finish processing
-        run: sleep 20
-
       - name: Generate SonarCloud Summary Report
         run: |
           echo "SonarCloud Analysis Summary" > sonar_summary.md
           echo "============================" >> sonar_summary.md
           echo "" >> sonar_summary.md
 
-          response=$(curl -s -u $SONAR_TOKEN: "https://sonarcloud.io/api/measures/component?component=srz-vishnu_sonarQube-test&metricKeys=coverage,bugs,vulnerabilities,code_smells")
+          retries=30
+          sleep_interval=10
+          for i in $(seq 1 $retries); do
+            echo "Polling attempt $i..."
+            response=$(curl -s -u $SONAR_TOKEN: "https://sonarcloud.io/api/measures/component?component=srz-vishnu_sonarQube-test&metricKeys=coverage,bugs,vulnerabilities,code_smells")
+            measure_count=$(echo "$response" | jq '.component.measures | length')
+
+            if [ "$measure_count" -gt 0 ]; then
+              echo "Metrics available!"
+              break
+            fi
+
+            if [ "$i" -eq "$retries" ]; then
+              echo "Timeout waiting for metrics."
+              break
+            fi
+
+            sleep $sleep_interval
+          done
 
           echo "" >> sonar_summary.md
           echo "📊 Raw SonarCloud API response:" >> sonar_summary.md
