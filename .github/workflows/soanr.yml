@@ -41,6 +41,12 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Wait for SonarCloud processing
+        run: sleep 15
+
       - name: Generate SonarCloud Summary Report
         run: |
           echo "SonarCloud Analysis Summary" > sonar_summary.md
